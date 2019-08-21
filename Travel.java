@@ -1,5 +1,9 @@
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 
 public class Travel {
@@ -29,7 +33,7 @@ public class Travel {
     public static void executeStoredProcedure(Connection con) {
         ResultSet rs;
         String call = "{call traveling(?)}";
-
+        //traveling is the name of the sp and '?' is the number of parameters(in this case 1)
         try {
             PreparedStatement pstmt = con.prepareStatement(call);
             pstmt.setInt(1, inputPassID());
@@ -46,6 +50,37 @@ public class Travel {
 
     }
     enum options {airports,flights};
+    public static List<JSONObject> getFormattedResult(ResultSet rs) {
+        List<JSONObject> resList = new ArrayList<JSONObject>();
+        try {
+            // get column names
+            ResultSetMetaData rsMeta = rs.getMetaData();
+            int columnCnt = rsMeta.getColumnCount();
+            List<String> columnNames = new ArrayList<String>();
+            for(int i=1;i<=columnCnt;i++) {
+                columnNames.add(rsMeta.getColumnName(i).toUpperCase());
+            }
+
+            while(rs.next()) { // convert each object to an human readable JSON object
+                JSONObject obj = new JSONObject();
+                for(int i=1;i<=columnCnt;i++) {
+                    String key = columnNames.get(i - 1);
+                    String value = rs.getString(i);
+                    obj.put(key, value);
+                }
+                resList.add(obj);
+            }
+        } catch(Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                rs.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return resList;
+    }
 
 
     public static int inputPassID() {
@@ -54,7 +89,6 @@ public class Travel {
         int passId = myObj.nextInt();  // Read user input
         return passId;
     }
-
     public static void main(String[] args) {
         // TODO Auto-generated method stub
 
@@ -77,7 +111,9 @@ public class Travel {
                        System.out.println("airports:");
                        PreparedStatement pstmt2 = con.prepareStatement(query2);
                        ResultSet rs2 = pstmt2.executeQuery();
-                       printResultSet(rs2);
+                       List<JSONObject> o = getFormattedResult(rs2);
+                       for(int i=0;i<o.size();i++)
+                           System.out.println(o.get(i).toString());
                        break;
 
                }
